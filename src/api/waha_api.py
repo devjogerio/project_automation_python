@@ -173,9 +173,7 @@ def create_app() -> FastAPI:
         )
         return response
 
-    # ----------------------
-    # Endpoints de Sessão
-    # ----------------------
+    # Sessões WAHA
 
     class SessionRequest(BaseModel):
         """Payload para operações de sessão WAHA."""
@@ -275,12 +273,7 @@ def create_app() -> FastAPI:
 
     @app.post("/whatsapp/webhook/events")
     async def webhook_events(request: Request):
-        """Recebe eventos do WAHA. Valida assinatura HMAC e persiste evento.
-
-        Persistência:
-        - Se `AWS_S3_BUCKET` e `boto3` disponíveis, salva em S3: `webhooks/<timestamp>_<rid>.json`
-        - Caso contrário, salva localmente em `data/webhooks/<timestamp>_<rid>.json`
-        """
+        """Recebe eventos do WAHA, valida HMAC e persiste (S3 ou local)."""
         try:
             body_bytes = await request.body()
             secret = os.getenv("WEBHOOK_SECRET", "")
@@ -297,7 +290,7 @@ def create_app() -> FastAPI:
                         status_code=401, detail="Assinatura inválida")
 
             payload = await request.json()
-            # Persiste evento
+            # Persistência
             stored, location = await _persist_webhook_event(body_bytes, request_id)
             logger.info(
                 f"Webhook evento recebido: keys={list(payload.keys())} stored={stored} location={location}")
@@ -310,14 +303,11 @@ def create_app() -> FastAPI:
                 status_code=500, detail="Erro interno ao processar webhook")
 
     async def _persist_webhook_event(body: bytes, request_id: str) -> Tuple[bool, str]:
-        """Persiste o corpo do webhook em S3 (se possível) ou localmente.
-
-        Retorna tupla `(stored, location)` indicando sucesso e caminho/chave.
-        """
+        """Persiste o corpo do webhook em S3 (se disponível) ou localmente. Retorna `(stored, location)`."""
         ts = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
         filename = f"{ts}_{request_id}.json"
         bucket = os.getenv("AWS_S3_BUCKET", "")
-        # Tenta S3
+        # Salva em S3 se disponível
         if bucket:
             try:
                 import boto3  # type: ignore
@@ -328,7 +318,7 @@ def create_app() -> FastAPI:
             except Exception as e:
                 logger.warning(
                     f"Falha ao salvar webhook no S3: {e}. Usando armazenamento local.")
-        # Local
+        # Salva localmente
         try:
             base_dir: Path = config.data_dir if hasattr(
                 config, "data_dir") else Path("data")
@@ -343,6 +333,7 @@ def create_app() -> FastAPI:
 
     @app.post("/whatsapp/text")
     async def send_text(req: TextMessageRequest, payload: Dict[str, Any] = Depends(auth.require), request: Request = None):
+        """Envia texto via WAHA."""
         identity = get_identity(payload, request)
         allowed = await app.state.rate_limiter.allow(identity)
         if not allowed:
@@ -362,6 +353,7 @@ def create_app() -> FastAPI:
 
     @app.post("/whatsapp/image")
     async def send_image(req: ImageMessageRequest, payload: Dict[str, Any] = Depends(auth.require), request: Request = None):
+        """Envia imagem (URL ou base64) via WAHA."""
         identity = get_identity(payload, request)
         allowed = await app.state.rate_limiter.allow(identity)
         if not allowed:
@@ -384,6 +376,7 @@ def create_app() -> FastAPI:
 
     @app.post("/whatsapp/ptt")
     async def send_ptt(req: PttRequest, payload: Dict[str, Any] = Depends(auth.require), request: Request = None):
+        """Envia áudio PTT via WAHA."""
         identity = get_identity(payload, request)
         allowed = await app.state.rate_limiter.allow(identity)
         if not allowed:
@@ -403,6 +396,7 @@ def create_app() -> FastAPI:
 
     @app.post("/whatsapp/thumb")
     async def send_thumb(req: ThumbRequest, payload: Dict[str, Any] = Depends(auth.require), request: Request = None):
+        """Envia mensagem com link e thumbnail via WAHA."""
         identity = get_identity(payload, request)
         allowed = await app.state.rate_limiter.allow(identity)
         if not allowed:

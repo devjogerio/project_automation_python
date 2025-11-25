@@ -62,7 +62,7 @@ class WahaClient:
                     "content-type", "").startswith("application/json")
                 data = resp.json() if is_json else {"raw": resp.text}
                 if resp.status_code >= 500:
-                    # erro temporário no servidor - retry
+                    # Retry em erro 5xx
                     await asyncio.sleep(backoff)
                     backoff *= 2
                     continue
@@ -86,16 +86,15 @@ class WahaClient:
         )
 
     async def test_connection(self) -> bool:
-        """Teste básico de conexão.
-        Tenta acessar `/swagger` ou `/dashboard`."""
+        """Teste básico: acessa `/swagger` ou fallback `/dashboard`."""
         try:
-            # `/swagger` deve responder quando WAHA está ativo
+            # Tenta /swagger
             await self._request(
                 "GET", "/swagger", None, retries=1
             )
             return True
         except Exception:
-            # fallback simples
+            # Fallback para /dashboard
             try:
                 await self._request("GET", "/dashboard", None, retries=1)
                 return True
