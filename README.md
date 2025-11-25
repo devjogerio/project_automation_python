@@ -105,8 +105,8 @@ curl -s -X POST http://localhost:8001/whatsapp/webhook/events \
  -d '{"event":"message","data":{"text":"hello"}}'
 
 ```bash
-git clone https://github.com/seu-usuario/automation-system.git
-cd automation-system
+git clone https://github.com/devjogerio/project_automation_python.git
+cd project_automation_python
 ```
 
 ### 2. Configure o ambiente virtual
@@ -752,7 +752,6 @@ Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICE
 
 - [OpenAI](https://openai.com/) pela API GPT
 - [ChromaDB](https://www.trychroma.com/) pelo banco de dados vetorial
-- [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) pela GUI moderna
 - [Loguru](https://github.com/Delgan/loguru) pelo sistema de logs
 - [pytest](https://pytest.org/) pelo framework de testes
 
@@ -791,4 +790,5 @@ Para suporte, envie um email para suporte@automation-system.com ou abra uma issu
 - Cliente WAHA (WhatsApp HTTP API) com autenticação por `X-API-KEY`
 - Suporte a sessões, envio/recebimento e webhooks
 - Armazenamento de webhooks em S3 via Lambda
+
 # Sistema_de_Automacao_Python_com_IA
