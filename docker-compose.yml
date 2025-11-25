@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  automation-system:
+    build: .
+    container_name: automation-system
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+      - ./models:/app/models
+    environment:
+      - PYTHONPATH=/app/src
+      - DISPLAY=:99
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - automation-network
+    
+  # Serviço opcional para monitoramento com Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: automation-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - automation-network
+    profiles:
+      - monitoring
+
+  # Serviço opcional para visualização com Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: automation-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - automation-network
+    profiles:
+      - monitoring
+
+networks:
+  automation-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

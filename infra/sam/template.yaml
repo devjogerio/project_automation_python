@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Projeto - API de Webhook e armazenamento S3
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: Nome do bucket S3 para armazenar webhooks
+  StageName:
+    Type: String
+    Default: staging
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 10
+    MemorySize: 256
+
+Resources:
+  WebhookBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      VersioningConfiguration:
+        Status: Enabled
+
+  WebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../src/aws/lambdas
+      Handler: webhook_handler.handler
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref BucketName
+      Environment:
+        Variables:
+          AWS_S3_BUCKET: !Ref BucketName
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /webhook
+            Method: post
+            RestApiId: !Ref ApiGateway
+
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref StageName
+      EndpointConfiguration: REGIONAL
+
+Outputs:
+  ApiUrl:
+    Description: URL do endpoint do webhook
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/webhook'
+  BucketNameOut:
+    Description: Nome do bucket S3
+    Value: !Ref BucketName

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gerenciar Sessões</title>
+  </head>
+  <body>
+    <h1>Gerenciar Sessões WAHA</h1>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Executar</button>
+    </form>
+    {% if response %}
+      <h2>Resposta</h2>
+      <pre>Status: {{ status }}</pre>
+      <pre>{{ response|safe }}</pre>
+    {% endif %}
+  </body>
+  </html>
