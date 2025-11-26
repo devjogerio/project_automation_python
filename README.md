@@ -151,8 +151,8 @@ Principais variáveis:
 ### Execução via linha de comando
 
 ```bash
-# Executar com GUI
-python src/main.py
+# Executar GUI (CustomTkinter)
+python -m src.gui.app
 
 # Executar sem GUI (modo headless)
 python src/main.py --headless
@@ -792,3 +792,17 @@ Para suporte, envie um email para suporte@automation-system.com ou abra uma issu
 - Armazenamento de webhooks em S3 via Lambda
 
 # Sistema_de_Automacao_Python_com_IA
+### GUI CustomTkinter
+
+```bash
+cd project_automation_python
+python -m venv .venv && . .venv/bin/activate
+pip install customtkinter Pillow httpx loguru
+export WAHA_HOST="http://localhost:3000"  # ou configure no .env
+export WAHA_API_KEY="seu_token"
+python -m src.gui.app
+```
+
+Notas:
+- O `.env.example` lista `WAHA_HOST` e `WAHA_API_KEY`. Não versionar valores reais.
+- A GUI usa transição suave entre temas e executor assíncrono para chamadas WAHA.
