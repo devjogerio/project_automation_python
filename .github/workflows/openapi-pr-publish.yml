@@ -2,9 +2,9 @@ name: OpenAPI PR — gerar e abrir Pull Request para gh-pages
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   generate-and-pr:
@@ -46,7 +46,7 @@ jobs:
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore(docs): atualizar documentação OpenAPI"
+          commit-message: 'chore(docs): atualizar documentação OpenAPI'
           branch: openapi/docs-update-${{ github.run_id }}
           title: 'Automated: Atualizar OpenAPI docs'
           body: |

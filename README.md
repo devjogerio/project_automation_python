@@ -2,6 +2,7 @@
 
 [![OpenAPI Docs](https://img.shields.io/website?down_message=offline&label=openapi&up_message=online&url=https%3A%2F%2Fdevjogerio.github.io%2Fproject_automation_python%2Fopenapi.json)](https://devjogerio.github.io/project_automation_python/openapi.json)
 [![OpenAPI CI](https://github.com/devjogerio/project_automation_python/actions/workflows/openapi-ci.yml/badge.svg)](https://github.com/devjogerio/project_automation_python/actions/workflows/openapi-ci.yml)
+[![OpenAPI PR Workflow](https://github.com/devjogerio/project_automation_python/actions/workflows/openapi-pr-publish.yml/badge.svg)](https://github.com/devjogerio/project_automation_python/actions/workflows/openapi-pr-publish.yml)
 
 Um sistema completo de automação em Python que integra web scraping, banco de dados vetorial, LLMs, Google Sheets, WhatsApp via WAHA e serviços AWS (Bedrock, S3, Lambda, API Gateway) com CI/CD e monitoramento.
 
@@ -316,13 +317,16 @@ presentes.
 
 ### CI / Publicação contínua (GitHub Actions)
 
-O projeto inclui um workflow GitHub Actions que automaticamente gera, valida e publica
-os arquivos OpenAPI (YAML e JSON) sempre que houver push ou pull request para a branch
-`main`.
+O projeto inclui um workflow GitHub Actions que automaticamente gera e valida
+os arquivos OpenAPI (YAML e JSON) sempre que houver push ou pull request para a
+branch `main`.
 
-Onde o workflow publica:
-
-- Publica os arquivos gerados para o branch `gh-pages` (via `peaceiris/actions-gh-pages`) — ideal para usar com GitHub Pages.
+Importante: a publicação direta foi DESATIVADA. Agora o fluxo padrão é abrir um
+Pull Request automático para a branch `gh-pages` (via `.github/workflows/openapi-pr-publish.yml`).
+Após revisão e merge do PR, a branch `gh-pages` será atualizada com os arquivos
+gerados — e um workflow separado (`.github/workflows/deploy-gh-pages.yml`) pode
+realizar um deploy para servidores remotos via rsync/SSH quando `gh-pages` for
+atualizada.
 
 Como habilitar GitHub Pages (opcional):
 
@@ -361,11 +365,52 @@ bash scripts/create_deploy_key.sh deploy_key
 
 - Crie um secret `SSH_PRIVATE_KEY` com o conteúdo do arquivo `deploy_key` (arquivo privado).
 - Crie `SSH_USER`, `SSH_HOST` e `SSH_PATH` com os valores correspondentes ao servidor.
-- (Opcional) adicione `DEPLOY_DOCS_SERVER` com valor `true` para ativar o passo de deploy no workflow.
 
-3. O workflow usará `ssh-agent` para carregar `SSH_PRIVATE_KEY` e então fará `rsync` de `docs/` para `${SSH_USER}@${SSH_HOST}:${SSH_PATH}`.
+Observação: a publicação automática direta foi movida para modelo PR-only: o
+workflow `openapi-ci.yml` apenas gera e valida; as atualizações em `gh-pages`
+vêm via PR. O deploy para servidores remotos (rsync) será executado quando a
+branch `gh-pages` receber novo commit (trigger `deploy-gh-pages.yml`).
+
+3. O workflow usará `ssh-agent` para carregar `SSH_PRIVATE_KEY` e então fará `rsync` de `docs/` para `${SSH_USER}@${SSH_HOST}:${SSH_PATH}` quando a branch `gh-pages` for atualizada (deploy-on-merge).
+
+## Gerenciamento de Secrets via gh CLI
+
+É possível criar os secrets pelo terminal com o GitHub CLI (`gh`). Exemplos:
+
+```bash
+# setar um segredo com o conteúdo de um arquivo (ex.: chave privada)
+gh secret set SSH_PRIVATE_KEY --body "$(cat deploy_key)"
+
+# definir valores simples
+gh secret set SSH_USER --body "deploy"
+gh secret set SSH_HOST --body "example.com"
+gh secret set SSH_PATH --body "/var/www/static/openapi"
+gh secret set DEPLOY_DOCS_SERVER --body "true"
+```
+
+Também é possível criar secrets pela interface (Settings → Secrets and variables → Actions → New repository secret).
 
 > Segurança: mantenha a **chave privada** segura — salve-a somente como secret do GitHub Actions e **não** a comite no repositório.
+
+## Geração de chave nesta máquina (observação importante)
+
+Eu tentei gerar um par de chaves nesta máquina, mas o utilitário `ssh-keygen` não
+está disponível no ambiente. Por isso, gerei os passos e um helper (`scripts/create_deploy_key.sh`) que você deve rodar localmente para criar o par
+(`deploy_key` e `deploy_key.pub`). Esse é o caminho mais seguro — execute o
+script na sua máquina local com `ssh-keygen` presente.
+
+## Teste de deploy local (simulado)
+
+Há um utilitário de teste que faz um deploy simulado para um diretório local ou
+um deploy real via SSH (se chaves e servidor estiverem configurados):
+
+```bash
+# simulação local (copia docs/ para ./_deploy_sim)
+DEST=./_deploy_sim ./scripts/test_deploy_rsync.sh
+
+# deploy real (requiere que a chave privada esteja disponível no agent)
+SSH_USER=deploy SSH_HOST=1.2.3.4 SSH_PATH=/var/www/docs ./scripts/test_deploy_rsync.sh
+```
 
 ````
 

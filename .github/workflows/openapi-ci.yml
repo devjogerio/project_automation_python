@@ -61,30 +61,7 @@ jobs:
           print('openapi.yaml: OK')
           PY
 
-  publish:
-    name: Publicar OpenAPI (gh-pages)
-    needs: build-and-validate
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Publicar docs para gh-pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
-
-      - name: Deploy para servidor (opcional)
-        if: ${{ secrets.DEPLOY_DOCS_SERVER == 'true' && secrets.SSH_PRIVATE_KEY != '' }}
-        uses: webfactory/ssh-agent@v0.10.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Copiar docs para servidor remoto via rsync
-        if: ${{ secrets.DEPLOY_DOCS_SERVER == 'true' && secrets.SSH_HOST && secrets.SSH_USER && secrets.SSH_PATH }}
-        run: |
-          rsync -avz --delete docs/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.SSH_PATH }}
+  # publish job REMOVED intentionally to force PR-based publishing only.
+  # The project now uses openapi-pr-publish.yml to create a Pull Request to the
+  # gh-pages branch. After manual review and merge the gh-pages branch will
+  # contain the updated docs.

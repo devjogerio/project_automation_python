@@ -1,0 +1,30 @@
+name: Deploy docs on gh-pages
+
+on:
+  push:
+    branches: [gh-pages]
+
+jobs:
+  deploy:
+    name: Deploy docs to remote server via rsync
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure rsync available
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y rsync
+
+      - name: Setup ssh-agent with provided private key
+        if: ${{ secrets.SSH_PRIVATE_KEY != '' }}
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy via rsync
+        if: ${{ secrets.SSH_PRIVATE_KEY != '' && secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_PATH != '' }}
+        run: |
+          rsync -avz --delete docs/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.SSH_PATH }}
