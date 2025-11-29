@@ -1,0 +1,55 @@
+name: OpenAPI PR — gerar e abrir Pull Request para gh-pages
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  generate-and-pr:
+    name: Gerar OpenAPI e abrir PR para gh-pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install openapi-spec-validator
+
+      - name: Generate OpenAPI YAML/JSON
+        run: |
+          python scripts/generate_openapi.py
+
+      - name: Validate spec
+        run: |
+          python - << 'PY'
+          import json, yaml
+          from openapi_spec_validator import validate_spec
+          with open('docs/openapi.json','r',encoding='utf-8') as fh:
+              validate_spec(json.load(fh))
+          with open('docs/openapi.yaml','r',encoding='utf-8') as fh:
+              validate_spec(yaml.safe_load(fh))
+          print('OpenAPI validated')
+          PY
+
+      - name: Create Pull Request with docs changes
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(docs): atualizar documentação OpenAPI"
+          branch: openapi/docs-update-${{ github.run_id }}
+          title: 'Automated: Atualizar OpenAPI docs'
+          body: |
+            Este PR atualiza os arquivos de documentação gerados automaticamente.
+          base: gh-pages
+          path: docs

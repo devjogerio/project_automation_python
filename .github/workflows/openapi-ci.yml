@@ -1,0 +1,90 @@
+name: OpenAPI CI — gerar, validar e publicar
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-validate:
+    name: Gerar e validar OpenAPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure rsync available (for optional deploy)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y rsync
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install openapi-spec-validator
+
+      - name: Run OpenAPI test
+        run: |
+          pytest -q tests/test_openapi.py
+
+      - name: Generate OpenAPI YAML/JSON
+        run: |
+          python scripts/generate_openapi.py
+
+      - name: Validate openapi.json
+        run: |
+          python - << 'PY'
+          import json
+          from openapi_spec_validator import validate_spec
+          with open('docs/openapi.json','r',encoding='utf-8') as fh:
+              spec = json.load(fh)
+          validate_spec(spec)
+          print('openapi.json: OK')
+          PY
+
+      - name: Validate openapi.yaml
+        run: |
+          python - << 'PY'
+          import yaml
+          from openapi_spec_validator import validate_spec
+          with open('docs/openapi.yaml','r',encoding='utf-8') as fh:
+              spec = yaml.safe_load(fh)
+          validate_spec(spec)
+          print('openapi.yaml: OK')
+          PY
+
+  publish:
+    name: Publicar OpenAPI (gh-pages)
+    needs: build-and-validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publicar docs para gh-pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Deploy para servidor (opcional)
+        if: ${{ secrets.DEPLOY_DOCS_SERVER == 'true' && secrets.SSH_PRIVATE_KEY != '' }}
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Copiar docs para servidor remoto via rsync
+        if: ${{ secrets.DEPLOY_DOCS_SERVER == 'true' && secrets.SSH_HOST && secrets.SSH_USER && secrets.SSH_PATH }}
+        run: |
+          rsync -avz --delete docs/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.SSH_PATH }}

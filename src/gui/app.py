@@ -9,6 +9,13 @@ from ..whatsapp.waha_client import WahaClient
 from .chat import ChatView
 from .controls import ControlsView
 from .indicators import IndicatorsView
+from .tabs_scraping import ScrapingView
+from .tabs_rag import RagView
+from .tabs_llm import LlmView
+from .tabs_sheets import SheetsView
+from .tabs_assistant import AssistantView
+from .state import ApplicationState
+from .env_controls import EnvControlsView
 
 
 class AutomationGUIApp(ctk.CTk):
@@ -22,6 +29,7 @@ class AutomationGUIApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
         self._mode: str = "Light"
+        self._state = ApplicationState()
         set_color_theme("blue")
         apply_theme(self._mode)
         self.title("Automation System GUI")
@@ -47,15 +55,26 @@ class AutomationGUIApp(ctk.CTk):
         # Abas: Chat, Controles, Status
         self._tabs = ctk.CTkTabview(self._root_frame)
         self._tabs.pack(fill="both", expand=True, padx=12, pady=12)
-        tab_chat = self._tabs.add("Chat")
-        tab_ctrl = self._tabs.add("Controles")
-        tab_stat = self._tabs.add("Status")
+        tab_chat = self._tabs.add("💬 Chat")
+        tab_ctrl = self._tabs.add("🎛️ Controles")
+        tab_stat = self._tabs.add("📈 Status")
+        tab_scrap = self._tabs.add("🕸️ Scraping")
+        tab_rag = self._tabs.add("🧠 RAG")
+        tab_llm = self._tabs.add("🤖 LLM")
+        tab_sheets = self._tabs.add("📊 Sheets")
+        tab_assist = self._tabs.add("🧩 Assistente")
 
         self._chat = ChatView(tab_chat, self._on_chat_send)
         self._chat.pack(fill="both", expand=True)
 
         self._controls = ControlsView(tab_ctrl)
-        self._controls.pack(fill="both", expand=True)
+        self._controls.pack(fill="x")
+
+        # Controles de .env (dinâmicos a partir do .env.example)
+        from pathlib import Path
+        base_dir = Path(__file__).resolve().parents[2]
+        self._env_controls = EnvControlsView(tab_ctrl, base_dir)
+        self._env_controls.pack(fill="both", expand=True, pady=8)
 
         self._indicators = IndicatorsView(tab_stat)
         self._indicators.pack(fill="both", expand=True)
@@ -63,6 +82,22 @@ class AutomationGUIApp(ctk.CTk):
         # Form WAHA (mantém funcionalidade original) na aba Status como exemplo
         self._content = SendTextForm(tab_stat, self._on_send_text)
         self._content.pack(fill="x", expand=False, pady=8)
+
+        # Demais abas
+        self._scraping = ScrapingView(tab_scrap, self._on_scrap_start, self._on_scrap_stop, self._on_scrap_status)
+        self._scraping.pack(fill="both", expand=True)
+
+        self._rag = RagView(tab_rag, self._on_rag_query)
+        self._rag.pack(fill="both", expand=True)
+
+        self._llm = LlmView(tab_llm, self._on_llm_generate)
+        self._llm.pack(fill="both", expand=True)
+
+        self._sheets = SheetsView(tab_sheets, self._on_sheets_sync)
+        self._sheets.pack(fill="both", expand=True)
+
+        self._assistant = AssistantView(tab_assist, self._on_assistant_ask)
+        self._assistant.pack(fill="both", expand=True)
 
         # Responsividade básica
         self.grid_rowconfigure(0, weight=1)
@@ -79,6 +114,7 @@ class AutomationGUIApp(ctk.CTk):
 
     def _on_accent_change(self, value: str) -> None:
         """Altera paleta de acento e reaplica perfil de tema."""
+        self._state.accent = value
         apply_profile(self._mode, value)  # transição já aplicada no root
 
     def _on_send_text(self, to: str, msg: str, session: Optional[str]) -> None:
@@ -116,6 +152,46 @@ class AutomationGUIApp(ctk.CTk):
         self._indicators.set_activity(True)
         self._indicators.set_progress(0.4)
         self._executor.submit(_task(), _done)
+
+    # Scraping
+    def _on_scrap_start(self) -> None:
+        """Inicia scraping (placeholder de integração)."""
+        self._state.set_activity(True)
+        self._scraping.feedback("🟠 Scraping: iniciando...")
+        self._indicators.set_activity(True)
+
+    def _on_scrap_stop(self) -> None:
+        """Para scraping (placeholder)."""
+        self._state.set_activity(False)
+        self._scraping.feedback("🔴 Scraping: parado")
+        self._indicators.set_activity(False)
+
+    def _on_scrap_status(self) -> None:
+        """Exibe status atual do scraping."""
+        txt = "🟢 ativo" if self._state.activity else "🟡 inativo"
+        self._scraping.feedback(f"Status: {txt}")
+
+    # RAG
+    def _on_rag_query(self, q: str) -> None:
+        """Consulta RAG básica (placeholder)."""
+        self._rag.show_text(f"Busca por: {q}\nResultado: (simulado)")
+        self._state.add_notification(1)
+        self._indicators.set_notifications(self._state.notifications)
+
+    # LLM
+    def _on_llm_generate(self, prompt: str) -> None:
+        """Gera resposta LLM (placeholder)."""
+        self._llm.show(f"Prompt: {prompt}\nResposta: (simulada)")
+
+    # Sheets
+    def _on_sheets_sync(self) -> None:
+        """Sincroniza dados com planilha (placeholder)."""
+        self._sheets.show("Sincronização solicitada (simulada)")
+
+    # Assistente
+    def _on_assistant_ask(self, question: str) -> None:
+        """Pergunta ao assistente (placeholder)."""
+        self._assistant.show(f"Pergunta: {question}\nResposta: (simulada)")
 
     def destroy(self) -> None:  # type: ignore[override]
         """Fecha recursos antes de destruir a janela."""

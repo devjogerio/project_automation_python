@@ -1,0 +1,696 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "WhatsApp API (WAHA)",
+    "version": "1.0.0",
+    "description": "API RESTful para integração com WAHA — envio de mensagens, gerenciamento de sessões e recepção/registro de webhooks. A documentação foi gerada a partir do código (FastAPI) e contém exemplos e validações de payload.",
+    "contact": {
+      "name": "Project Automation Team",
+      "email": "dev+project_automation@example.com",
+      "url": "https://github.com/devjogerio/project_automation_python"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com/v1",
+      "description": "Produção"
+    },
+    {
+      "url": "https://staging.api.example.com/v1",
+      "description": "Homologação"
+    },
+    {
+      "url": "http://localhost:8001",
+      "description": "Desenvolvimento (WAHA API local)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "sessions",
+      "description": "Operações sobre sessões WAHA (criar / iniciar / parar / status)"
+    },
+    {
+      "name": "messages",
+      "description": "Envio de mensagens: texto, imagem, ptt (audio), thumb (link com thumbnail)"
+    },
+    {
+      "name": "webhooks",
+      "description": "Registro de webhook e recebimento de eventos WAHA"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token JWT no header Authorization: Bearer <token>"
+      }
+    },
+    "schemas": {
+      "SessionRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32,
+            "description": "Nome simples da sessão (alfa-numérico, _ e - permitidos)",
+            "example": "meu_bot_01"
+          }
+        }
+      },
+      "WebhookRequest": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL pública para receber eventos do WAHA",
+            "example": "https://meu.endereco.com/wpp/webhook"
+          }
+        }
+      },
+      "TextMessageRequest": {
+        "type": "object",
+        "required": [
+          "to",
+          "message"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "description": "Telefone destino em formato E.164 brasileiro (ex: +5511999998888 ou 5511999998888)",
+            "example": 5511999998888
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Texto da mensagem",
+            "example": "Olá mundo!"
+          },
+          "session": {
+            "type": "string",
+            "nullable": true,
+            "description": "Nome opcional da sessão WAHA"
+          }
+        }
+      },
+      "ImageMessageRequest": {
+        "type": "object",
+        "required": [
+          "to"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "description": "Telefone destino (+55...)",
+            "example": 5511999998888
+          },
+          "image_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL da imagem (opcional se fornecer image_base64)",
+            "example": "https://pics.example.com/photo.jpg"
+          },
+          "image_base64": {
+            "type": "string",
+            "description": "Conteúdo da imagem em base64 (opcional)",
+            "example": "<base64-imagem>"
+          },
+          "caption": {
+            "type": "string",
+            "description": "Legenda da imagem (opcional)"
+          },
+          "session": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "PttRequest": {
+        "type": "object",
+        "required": [
+          "to",
+          "audio_base64"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "example": 5511999998888
+          },
+          "audio_base64": {
+            "type": "string",
+            "description": "Áudio codificado em base64 (formato PTT)",
+            "example": "<base64-audio>"
+          },
+          "session": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ThumbRequest": {
+        "type": "object",
+        "required": [
+          "to",
+          "url",
+          "title",
+          "description"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "example": 5511999998888
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Link que será enviado como preview",
+            "example": "https://example.com/contato"
+          },
+          "title": {
+            "type": "string",
+            "example": "Meu link"
+          },
+          "description": {
+            "type": "string",
+            "example": "Preview do link"
+          },
+          "image_base64": {
+            "type": "string",
+            "nullable": true,
+            "description": "Thumbnail opcional em base64"
+          },
+          "session": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "WebhookEvent": {
+        "type": "object",
+        "description": "Payload recebido pelo WAHA em eventos de webhook. Estrutura livre (JSON).",
+        "additionalProperties": true
+      }
+    }
+  },
+  "paths": {
+    "/whatsapp/session/create": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Cria uma sessão WAHA",
+        "description": "Cria uma sessão com o nome informado. Requer autenticação JWT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRequest"
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "name": "meu_bot_01"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sessão criada com sucesso",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "result": {
+                    "/* client specific response */": null
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado — JWT ausente/ inválido"
+          },
+          "429": {
+            "description": "Rate limit excedido"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/whatsapp/session/start": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Inicia sessão WAHA",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRequest"
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "name": "meu_bot_01"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso"
+          },
+          "401": {
+            "description": "Não autorizado"
+          },
+          "429": {
+            "description": "Rate limit excedido"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/whatsapp/session/stop": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Para sessão WAHA",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRequest"
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "name": "meu_bot_01"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso"
+          },
+          "401": {
+            "description": "Não autorizado"
+          },
+          "429": {
+            "description": "Rate limit excedido"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/whatsapp/session/{name}/status": {
+      "get": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Obter status da sessão",
+        "description": "Retorna status da sessão WAHA pelo nome.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Nome da sessão"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status retornado com sucesso",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "result": {
+                    "connected": true,
+                    "session": "meu_bot_01"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado"
+          },
+          "429": {
+            "description": "Rate limit excedido"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/whatsapp/webhook/register": {
+      "post": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "Registra webhook no WAHA",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookRequest"
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "url": "https://meu.endereco.com/wpp/webhook"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registro bem-sucedido"
+          },
+          "401": {
+            "description": "Não autorizado"
+          },
+          "429": {
+            "description": "Rate limit excedido"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/whatsapp/webhook/events": {
+      "post": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "Recebe eventos WAHA (inbound)",
+        "description": "Endpoint público para receber eventos do WAHA (mensagens, status, etc.). Se configurado, o header `X-Signature` (HMAC-SHA256) será validado com `WEBHOOK_SECRET`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookEvent"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Signature",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Assinatura HMAC-SHA256 opcional do body (header X-Signature)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Evento processado e persistido",
+            "content": {
+              "application/json": {
+                "example": {
+                  "ok": true,
+                  "stored": true,
+                  "location": "s3://bucket/webhooks/..."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Assinatura inválida"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/whatsapp/text": {
+      "post": {
+        "tags": [
+          "messages"
+        ],
+        "summary": "Enviar texto via WAHA",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextMessageRequest"
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "to": "+5511999998888",
+                    "message": "Olá mundo!",
+                    "session": "meu_bot_01"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mensagem enviada com sucesso"
+          },
+          "400": {
+            "description": "Parâmetros inválidos"
+          },
+          "401": {
+            "description": "Não autorizado"
+          },
+          "429": {
+            "description": "Rate limit excedido"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/whatsapp/image": {
+      "post": {
+        "tags": [
+          "messages"
+        ],
+        "summary": "Enviar imagem (URL ou base64)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageMessageRequest"
+              },
+              "examples": {
+                "by_url": {
+                  "value": {
+                    "to": "+5511999998888",
+                    "image_url": "https://pics.example.com/photo.jpg",
+                    "caption": "Foto"
+                  }
+                },
+                "by_base64": {
+                  "value": {
+                    "to": "+5511999998888",
+                    "image_base64": "<base64-img>",
+                    "caption": "Foto base64"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envio aceito"
+          },
+          "400": {
+            "description": "image_url ou image_base64 deve ser informado"
+          },
+          "401": {
+            "description": "Não autorizado"
+          },
+          "429": {
+            "description": "Rate limit excedido"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/whatsapp/ptt": {
+      "post": {
+        "tags": [
+          "messages"
+        ],
+        "summary": "Enviar PTT (áudio) via WAHA",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PttRequest"
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "to": "+5511999998888",
+                    "audio_base64": "<base64-audio>"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envio de PTT aceito"
+          },
+          "400": {
+            "description": "Parâmetros inválidos"
+          },
+          "401": {
+            "description": "Não autorizado"
+          },
+          "429": {
+            "description": "Rate limit excedido"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/whatsapp/thumb": {
+      "post": {
+        "tags": [
+          "messages"
+        ],
+        "summary": "Enviar link com thumbnail",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThumbRequest"
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "to": "+5511999998888",
+                    "url": "https://example.com",
+                    "title": "Exemplo",
+                    "description": "Teste"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mensagem com thumbnail enviada"
+          },
+          "400": {
+            "description": "Parâmetros inválidos"
+          },
+          "401": {
+            "description": "Não autorizado"
+          },
+          "429": {
+            "description": "Rate limit excedido"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    }
+  },
+  "security": []
+}

@@ -1,5 +1,8 @@
 # Sistema de Automação Python com IA
 
+[![OpenAPI Docs](https://img.shields.io/website?down_message=offline&label=openapi&up_message=online&url=https%3A%2F%2Fdevjogerio.github.io%2Fproject_automation_python%2Fopenapi.json)](https://devjogerio.github.io/project_automation_python/openapi.json)
+[![OpenAPI CI](https://github.com/devjogerio/project_automation_python/actions/workflows/openapi-ci.yml/badge.svg)](https://github.com/devjogerio/project_automation_python/actions/workflows/openapi-ci.yml)
+
 Um sistema completo de automação em Python que integra web scraping, banco de dados vetorial, LLMs, Google Sheets, WhatsApp via WAHA e serviços AWS (Bedrock, S3, Lambda, API Gateway) com CI/CD e monitoramento.
 
 ## 🚀 Funcionalidades
@@ -47,16 +50,8 @@ Um sistema completo de automação em Python que integra web scraping, banco de 
 
 ### 6. **Interface Gráfica Moderna**
 
-- GUI com CustomTkinter
-- Múltiplas abas para diferentes funcionalidades
-- Interface de chat intuitiva
-- Controles em tempo real
-- Temas modernos e responsivos
-
 ### 7. **Sistema de Monitoramento**
 
-- Logs detalhados com Loguru
-- Métricas de performance
 - Health checks de componentes
 - Alertas de erro
 - Dashboard de status
@@ -75,12 +70,6 @@ Um sistema completo de automação em Python que integra web scraping, banco de 
 - Autenticação JWT (header `Authorization: Bearer <token>`)
 - Documentação automática OpenAPI/Swagger em `/docs`
 - Versionamento por prefixo (`/api/v1`)
-
-### 10. **Fontes de Dados (Conectores)**
-
-- RSS (feedparser), GitHub Issues (REST), Wikipedia (REST summary)
-- Formato normalizado (`content` + `metadata`) para RAG
-- Tratamento de erros e fallback por fonte
 
 ## 📋 Pré-requisitos
 
@@ -286,13 +275,99 @@ DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
 SERVICE_JWT_TOKEN=
 WAHA_BASE_URL=http://127.0.0.1:8001
 
-```
+````
 
 A interface chama os endpoints WAHA com `Authorization: Bearer $SERVICE_JWT_TOKEN`.
 
 # Acessar documentação OpenAPI/Swagger
 # http://localhost:8000/docs
+
+## 📘 Gerar documentação OpenAPI (YAML e JSON) automaticamente 🔧
+
+O projeto inclui um gerador que importa a aplicação FastAPI e produz os arquivos
+de especificação OpenAPI em YAML e JSON (em `docs/openapi.yaml` e
+`docs/openapi.json`). Isso garante que a documentação seja gerada automaticamente
+a partir do código.
+
+Como gerar:
+
+```bash
+# do diretório raiz do projeto
+python scripts/generate_openapi.py
+
+# arquivos gerados:
+ls -l docs/openapi.*
+````
+
+Como servir a documentação localmente (Swagger UI / ReDoc):
+
+```bash
+# servido via Uvicorn (aponta para create_app em src/api/waha_api)
+uvicorn src.api.waha_api:create_app --reload --port 8001
+
+# abra no navegador
+# Swagger UI: http://localhost:8001/docs
+# ReDoc: http://localhost:8001/redoc
 ```
+
+O gerador também é executado por um teste de integração (`tests/test_openapi.py`) que valida
+que os arquivos JSON/YAML foram gerados corretamente e que as rotas principais estão
+presentes.
+
+### CI / Publicação contínua (GitHub Actions)
+
+O projeto inclui um workflow GitHub Actions que automaticamente gera, valida e publica
+os arquivos OpenAPI (YAML e JSON) sempre que houver push ou pull request para a branch
+`main`.
+
+Onde o workflow publica:
+
+- Publica os arquivos gerados para o branch `gh-pages` (via `peaceiris/actions-gh-pages`) — ideal para usar com GitHub Pages.
+
+Como habilitar GitHub Pages (opcional):
+
+1. Vá para as configurações do repositório (Settings → Pages).
+2. Selecione a fonte (Source) como `gh-pages` branch e `/ (root)`.
+3. Salve — os arquivos gerados estarão acessíveis em algo como:
+
+```
+https://<seu-usuario>.github.io/<seu-repo>/openapi.json
+https://<seu-usuario>.github.io/<seu-repo>/openapi.yaml
+```
+
+Deploy para servidor próprio (opcional):
+
+O workflow também suporta um deploy opcional para seu próprio servidor via rsync/ssh. Para ativá-lo no GitHub Actions, adicione os seguintes segredos (Settings → Secrets → Actions):
+
+- **SSH_PRIVATE_KEY** — chave privada SSH (PEM) que o GitHub Actions usará para autenticar no servidor
+- **SSH_USER** — usuário SSH no servidor
+- **SSH_HOST** — host ou IP do servidor
+- **SSH_PATH** — caminho de destino (p.ex. /var/www/static/openapi)
+- **DEPLOY_DOCS_SERVER** — `true` para ativar o deploy (string 'true')
+
+Passos recomendados para configurar o deploy SSH (rápido):
+
+1. Gere um par de chaves (private + public) no seu ambiente local — usamos um helper incluído no projeto:
+
+```bash
+# Gera deploy_key e deploy_key.pub
+bash scripts/create_deploy_key.sh deploy_key
+
+# Copie o conteúdo de deploy_key.pub para o servidor remoto (authorized_keys do usuário alvo):
+# no servidor remoto: mkdir -p ~/.ssh && echo '<conteudo_deploy_key.pub>' >> ~/.ssh/authorized_keys
+```
+
+2. No GitHub (Settings → Secrets and variables → Actions → New repository secret):
+
+- Crie um secret `SSH_PRIVATE_KEY` com o conteúdo do arquivo `deploy_key` (arquivo privado).
+- Crie `SSH_USER`, `SSH_HOST` e `SSH_PATH` com os valores correspondentes ao servidor.
+- (Opcional) adicione `DEPLOY_DOCS_SERVER` com valor `true` para ativar o passo de deploy no workflow.
+
+3. O workflow usará `ssh-agent` para carregar `SSH_PRIVATE_KEY` e então fará `rsync` de `docs/` para `${SSH_USER}@${SSH_HOST}:${SSH_PATH}`.
+
+> Segurança: mantenha a **chave privada** segura — salve-a somente como secret do GitHub Actions e **não** a comite no repositório.
+
+````
 
 ### Uso programático
 
@@ -329,7 +404,7 @@ await system.sheets_manager.sync_scraping_data({
 
 # Encerrar sistema
 system.shutdown()
-```
+````
 
 ## 📊 Arquitetura
 
@@ -792,6 +867,7 @@ Para suporte, envie um email para suporte@automation-system.com ou abra uma issu
 - Armazenamento de webhooks em S3 via Lambda
 
 # Sistema_de_Automacao_Python_com_IA
+
 ### GUI CustomTkinter
 
 ```bash
@@ -804,5 +880,23 @@ python -m src.gui.app
 ```
 
 Notas:
+
 - O `.env.example` lista `WAHA_HOST` e `WAHA_API_KEY`. Não versionar valores reais.
 - A GUI usa transição suave entre temas e executor assíncrono para chamadas WAHA.
+
+#### Abas e Fluxos
+
+- **💬 Chat**: histórico rolável, entrada, enviar/limpar/anexar; integra envio via WAHA com feedback imediato e indicadores.
+- **🎛️ Controles**: slider e toggle com atualização instantânea; demonstra responsividade e feedback <200ms.
+- **📈 Status**: barra de progresso, ícones de conexão/atividade/notificações; formulário WAHA para envio direto.
+- **🕸️ Scraping**: iniciar/parar/status do coletor; exibe feedback textual da operação.
+- **🧠 RAG**: consulta de conhecimento; apresenta resultado simplificado.
+- **🤖 LLM**: prompt e resposta; demonstra geração no provedor preferido.
+- **📊 Sheets**: sincronização com Google Sheets; área de log das operações.
+- **🧩 Assistente**: pergunta/resposta integrada; exibe saída consolidada.
+
+Dependências e Integração:
+
+- Estado global via `ApplicationState` para notificações/atividade/tema.
+- Navegação clara com `CTkTabview` e títulos com ícones.
+- Interações registradas e feedback visual durante transições (barra/labels).

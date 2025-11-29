@@ -1,8 +1,12 @@
-PY := python
+PY := python3
 PIP := pip
 UVICORN := uvicorn
 
 .PHONY: gui api test lint typecheck deps
+ 
+docs-openapi:
+	$(PY) scripts/generate_openapi.py
+
 
 gui:
 	$(PY) src/main.py
